@@ -128,6 +128,7 @@ Default keyboard controls:
 | Ctrl+3    | Keyboard controls port 3        |
 | Ctrl+4    | Keyboard controls port 4        |
 | F1        | Toggle profiler                 |
+| F5        | Reset controller ports          |
 | F8        | Toggle HUD                      |
 
 ## FAQ
@@ -231,7 +232,7 @@ For Android, see [ANDROID.md].
 
 - [Windii](https://www.youtube.com/@WindiiGitlord/videos): Provided Japanese localization for the custom menus.
 
-- [Kondrashov's Lair](https://www.youtube.com/channel/UCUU-r-7kVY3ig-GY7KTFvlw): Produced the installer music (original prod. by Sins Of A Divine Mother).
+- [Kondrashov's Lair](https://www.youtube.com/channel/UCUU-r-7kVY3ig-GY7KTFvlw): Produced the [installer music](https://www.youtube.com/watch?v=7_pwiwb9V14) (original prod. by Sins Of A Divine Mother).
 
 ### Tester Thanks
 - [Rawlins]
@@ -275,5 +276,5 @@ For Android, see [ANDROID.md].
 [DarkShadow17]: https://www.youtube.com/@DarkShadowtH
 [The Spectral Star]: https://www.youtube.com/@the-spectral-star5086
 [Marathon Recompiled]: https://github.com/sonicnext-dev/MarathonRecomp
-[Pixel The Retro]: https://x.com/PixelTheRetro
+[Pixel The Retro]: https://www.youtube.com/@PixelTheRetro
 [Unleashed Recompiled]: https://github.com/hedge-dev/UnleashedRecomp

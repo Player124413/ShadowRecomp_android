@@ -64,7 +64,7 @@ struct Video
 	static RenderDevice* GetRenderDevice();
 	static bool is_vulkan();
 	static bool CreateHostDevice(const char* sdlVideoDriver, bool graphicsApiRetry);
-	static void PrecompileShadersAndPipelines();
+	static void PrecompileShadersAndPipelines(const std::function<void(float)>& progress = {});
 	static void PrecompileShadersAndPipelinesForInstall(const std::function<void(float)>& progress);
 	static void Present(X86Context* ctx);
 	static void WaitForGPU();

@@ -140,7 +140,7 @@ A few settings exist for narrowing down a problem with any of this. They are not
 
 | Setting                                 | Effect                                               |
 | --------------------------------------- | ---------------------------------------------------- |
-| `BackgroundPipelineCompilation = false` | All pipelines are created before the game starts, as the desktop versions do: a longer black screen at launch, no stutter after it |
+| `BackgroundPipelineCompilation = false` | All pipelines are created before the game starts, as the desktop versions do: a progress bar at launch, no stutter after it |
 | `PipelineDiskCache = false`             | Nothing the driver compiles is kept between launches |
 | `ShadersWithoutInt64 = true`            | The shaders are rewritten to do without 64-bit integers also on a driver that has them. On a device where the game works, this tells whether the rewrite or a driver is at fault when a device without them shows a wrong picture |
 | `DecodeCompressedTextures = true`       | DXT/BC textures are unpacked when they are loaded also on a GPU that can sample them, as on one that cannot (see [Mods](#mods)) |
@@ -312,7 +312,7 @@ CMake:
   instead of having the configure step build it.
 - `-DDIRECTX_DXC_TOOL=/path/to/dxc`: use another DirectX Shader Compiler for the build
   machine. By default the prebuilt one from `tools/XShaderRecomp` is used, which exists
-  for x86-64 Linux, x86-64 and ARM64 Windows, and macOS.
+  for x86-64 and ARM64 Linux, x86-64 and ARM64 Windows, and macOS.
 - `-DSHADOW_RECOMP_ANDROID_JNILIBS_DIR=<dir>`: where `android-jnilibs` copies the
   libraries.
 - The XboxRecomp2 options from [BUILDING.md](BUILDING.md#4-recompiler).
@@ -320,7 +320,7 @@ CMake:
 Gradle (`./gradlew -P<name>=<value> …`):
 
 - `androidRevision`: number added to the version for Android-only re-releases of the
-  same game version (`1.0.0-android.2`).
+  same game version (`1.0.1-android.2`).
 - `updateRepository`: `owner/name` of the GitHub repository whose releases the launcher
   checks for updates. Defaults to the repository building the APK on GitHub Actions;
   empty disables update checks.

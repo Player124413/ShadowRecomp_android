@@ -156,7 +156,15 @@ CONFIG_DEFINE_HIDDEN("Codes", bool, XboxEarlyTargetBehavior, false, false);
 CONFIG_DEFINE_HIDDEN("Codes", bool, HoldLTForceJumpDash, false, false);
 CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedMod, false, true);
 CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalExpertRingDropBehavior, false, false);
-CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedOriginalElecCodeEnemySpeed, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalElecCodeEnemySpeed, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalEscapePodHealth, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalSkid, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalCarPhysics, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalAirSaucerPhysics, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalAirSaucerDoubleJump, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModOriginalWeaponKnockback, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModDisableGhostRedRings, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, ReloadedModDisableSRank, false, false);
 CONFIG_DEFINE_HIDDEN("Codes", bool, ExtendedMultiplayer, false, false);
 CONFIG_DEFINE_HIDDEN("Codes", uint32_t, ExtendedMultiplayerPlayerCount, 2, false);
 CONFIG_DEFINE_HIDDEN("Codes", int32_t, ExtendedMultiplayerP1CharId, -1, false);
@@ -170,6 +178,7 @@ CONFIG_DEFINE_HIDDEN("Codes", bool, SelectModeEnableLastStoryDevilDoomSlots, fal
 CONFIG_DEFINE_HIDDEN("Codes", bool, SkipLoadingAnyEvents, false, false);
 CONFIG_DEFINE_HIDDEN("Codes", bool, SingleFrameInvulnRecovery, false, false);
 CONFIG_DEFINE_HIDDEN("Codes", bool, AllPartnersCanHomingAttack, false, false);
+CONFIG_DEFINE_HIDDEN("Codes", bool, UnlockGeoColiNameRestrictions, false, false);
 
 CONFIG_DEFINE("Update", bool, CheckForUpdates, true, false);
 CONFIG_DEFINE("Update", time_t, LastChecked, 0, false);

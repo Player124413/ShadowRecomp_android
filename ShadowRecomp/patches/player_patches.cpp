@@ -117,3 +117,20 @@ void JetEffectRestoreFourthFlameMidAsmHook(X86Context& __restrict ctx, uint8_t* 
 		}
 	}
 }
+
+// LightDash stuck spam fix
+bool LightDashStuckSpamFixMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
+{
+	const uint32_t lightDash = ctx.ebx.u32;
+	const uint32_t player = X86_LOAD_U32(lightDash + 0x4);
+	float ahead = 0.0f;
+	float prevAhead = 0.0f;
+	for (int i = 0; i < 3; i++)
+	{
+		const float target = X86_LOAD_F32(lightDash + 0x30 + i * 4);
+		const float dir = X86_LOAD_F32(lightDash + 0x24 + i * 4);
+		ahead += (target - X86_LOAD_F32(player + 0x4 + i * 4)) * dir;
+		prevAhead += (target - X86_LOAD_F32(player + 0xD0 + i * 4)) * dir;
+	}
+	return ahead >= 0.0f && prevAhead >= 0.0f;
+}

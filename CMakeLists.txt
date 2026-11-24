@@ -17,15 +17,10 @@ option(SHADOW_RECOMP_ANDROID "Build the Android library (libmain.so). Does not u
 
 # The Android build has no vcpkg dependencies: FreeType is built from source and the
 # desktop-only libraries (curl, nativefiledialog, dbus, the D3D12 SDK) are not used.
+# Everywhere else vcpkg comes in as the toolchain file of the presets.
 if (NOT SHADOW_RECOMP_ANDROID)
     if(NOT DEFINED ENV{VCPKG_ROOT})
         message(FATAL_ERROR "VCPKG_ROOT is not defined!")
-    endif()
-
-    include($ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
-
-    if(VCPKG_TARGET_TRIPLET MATCHES "static")
-        set(VCPKG_APPLOCAL_DEPS OFF)
     endif()
 endif()
 

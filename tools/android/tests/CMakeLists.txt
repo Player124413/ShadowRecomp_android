@@ -259,7 +259,10 @@ add_test(NAME texture_unpacking COMMAND bc_decode_test)
 # stub-recompiler.py stands in for XboxRecomp2 when the pipeline is tested without the game.
 add_test(NAME fetch_xbe COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/fetch_xbe_test.py")
 add_test(NAME stub_recompiler COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/stub_recompiler_test.py")
-set_tests_properties(fetch_xbe stub_recompiler PROPERTIES ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1")
+
+# The codes the launcher's mod manager offers are the ones the game knows by name.
+add_test(NAME launcher_codes COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/launcher_codes_test.py")
+set_tests_properties(fetch_xbe stub_recompiler launcher_codes PROPERTIES ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1")
 
 # --- Launcher (Java) --------------------------------------------------------------------
 # The launcher classes without Android dependencies: the Xbox disc image check, the game

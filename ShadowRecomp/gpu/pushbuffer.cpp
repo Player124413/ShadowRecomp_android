@@ -17,7 +17,7 @@
 static float ClearQuadVertex[16]; // 4 vertices, Stride 16 (float X Y Z W)
 static float RasterRenderQuadVertex[24]; // 4 vertices, Stride 24 (float X Y Z W)
 
-static float SubmitNodeQuadVertex[256]; //arbitrary limitation, should be enough to handle all case scenarios
+static float SubmitNodeQuadVertex[0x2000 / sizeof(float)];
 
 DWORD GetStrideFromVertexDeclaration(HostVertexDeclaration* pVertexDeclaration)
 {

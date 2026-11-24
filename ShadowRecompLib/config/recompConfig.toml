@@ -177,6 +177,7 @@ function_hooks = [
 	0x27250,
 	0x55A80,
 	0x55BE0,
+	0x56E00,
 	0x56FC0,
 	0x57630,
 	0x578B0,
@@ -3202,3 +3203,32 @@ jump_address_on_true = 0x6CFB9
 [[midasm_hook]]
 name = "LarvaMotionSpeedMidAsmHook"
 address = 0x138C09
+
+[[midasm_hook]]
+name = "InfoWindowHideMidAsmHook"
+address = 0x27F250
+jump_address_on_true = 0x27F2AA
+jump_address_on_false = 0x27F2C7
+
+[[midasm_hook]]
+name = "ChaosControlAccelMidAsmHook"
+address = 0x6C55D
+
+[[midasm_hook]]
+name = "GroundCannonShootKnockbackIdleTransitionMidAsmHook"
+address = 0x736FD
+jump_address_on_true = 0x7373D
+
+[[midasm_hook]]
+name = "SpinDashColiWaitMidAsmHook"
+address = 0x7C136
+
+[[midasm_hook]]
+name = "LightDashStuckSpamFixMidAsmHook"
+address = 0x77A1F
+jump_address_on_true = 0x77E25
+jump_address_on_false = 0x77A46
+
+[[midasm_hook]]
+name = "LightDashStuckThresholdMidAsmHook"
+address = 0x77F6F

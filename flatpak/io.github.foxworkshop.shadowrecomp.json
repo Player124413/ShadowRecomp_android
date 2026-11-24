@@ -4,6 +4,7 @@
   "runtime-version": "26.08",
   "sdk": "org.freedesktop.Sdk",
   "sdk-extensions": ["org.freedesktop.Sdk.Extension.llvm22"],
+  "command": "ShadowRecomp",
   "finish-args": [
     "--share=network",
     "--socket=wayland",
@@ -14,7 +15,8 @@
     "--filesystem=host",
     "--filesystem=/media",
     "--filesystem=/run/media",
-    "--filesystem=/mnt"
+    "--filesystem=/mnt",
+    "--filesystem=xdg-run/gamescope-0:ro"
   ],
   "modules": [
     {

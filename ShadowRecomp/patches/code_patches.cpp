@@ -78,13 +78,19 @@ void FireVacuumCallbackMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
     ctx.esp.u32 += 8;
 }
 
+void ToggleExpertMode()
+{
+    auto base = g_memory.base;
+    X86_STORE_U8(0x54DE55, 1);
+}
+
 // Expert Select
 void ExpertSelectMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
     const bool enabled = Config::SelectModeExpertStages || Config::ReloadedMod;
     if (enabled && PJSPeripheral::IsHeld(0, PJSPeripheral::BTN_X))
     {
-        X86_STORE_U8(0x54DE55, 1);
+        ToggleExpertMode();
     }
 }
 

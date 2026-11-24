@@ -1,5 +1,7 @@
-// TODO: QOL limitation breaking patches for mods etc, still pending on what we want to do or if we'll defer this
-// TODO: Decide when we look more into code mod support
+#include <kernel/function.h>
+#include <user/config.h>
+
+// QOL limitation breaking patches for mods etc
 
 // For testing 2P mod or performance testing; Force TBlock to always load every chunk
 // bool loadAllChunks(float* a1, float* a2, float* a3)
@@ -10,37 +12,34 @@
 //GUEST_FUNCTION_HOOK_STDCALL(sub_12700, loadAllChunks);
 
 // Level Geo Unrestrict (For Custom Stages)
-// Note: This will break some stages, e.g. Egg Dealer (Black Comet) and if you die in a certain area in GUN Fortress.
+// Note: This will break some stages, e.g. Egg Dealer (Black Comet) or... basically most final bosses? and if you die in a certain area in GUN Fortress.
 // This is because Sonic Team left visibility chunks pointing to old files. These are usually ignored due to this file restriction function.
-//X86_FUNC_IMPL(__imp__sub_56E00);
-//X86_FUNC(sub_56E00)
-//{
-//	auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
-//
-//	uint32_t strAddr = X86_LOAD_U32(ctx.esp.u32 + 4);
-//	const char* str = strAddr ? (const char*)(base + strAddr) : nullptr;
-//
-//	if (str)
-//	{
-//		for (const char* p = str; *p; p++)
-//		{
-//			if ((p[0] == 's' || p[0] == 'S') &&
-//				(p[1] == 't' || p[1] == 'T') &&
-//				(p[2] == 'g' || p[2] == 'G') &&
-//				isDigit(p[3]) && isDigit(p[4]) &&
-//				isDigit(p[5]) && isDigit(p[6]) &&
-//				p[7] == '_' &&
-//				isDigit(p[8]) && isDigit(p[9]))
-//			{
-//				ctx.eax.u32 = 1;
-//				ctx.esp.u32 += 4;
-//				return;
-//			}
-//		}
-//	}
-//
-//	__imp__sub_56E00(ctx, base);
-//}
+// Enable with UnlockGeoColiNameRestrictions
+X86_FUNC_IMPL(__imp__sub_56E00);
+X86_OVERRIDE_FUNC(sub_56E00)
+{
+	uint32_t strAddr = X86_LOAD_U32(ctx.esp.u32 + 4);
+	if (Config::UnlockGeoColiNameRestrictions && strAddr)
+	{
+		auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
+		for (const char* p = (const char*)(base + strAddr); *p; p++)
+		{
+			if ((p[0] == 's' || p[0] == 'S') &&
+				(p[1] == 't' || p[1] == 'T') &&
+				(p[2] == 'g' || p[2] == 'G') &&
+				isDigit(p[3]) && isDigit(p[4]) &&
+				isDigit(p[5]) && isDigit(p[6]) &&
+				p[7] == '_' &&
+				isDigit(p[8]) && isDigit(p[9]))
+			{
+				ctx.eax.u32 = 1;
+				ctx.esp.u32 += 4;
+				return;
+			}
+		}
+	}
+	__imp__sub_56E00(ctx, base);
+}
 
 // Collision BVH Stack Overflow Fix
 // TODO: This corrupts memory / needs to be reworked; Was good enough for a POC

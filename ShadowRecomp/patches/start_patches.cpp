@@ -1,11 +1,13 @@
 #include <kernel/function.h>
 #include <user/config.h>
 #include <os/logger.h>
+#include "code_patches.h"
 
 extern bool QuickBootConfig;
 extern int Ts_StageID;
 extern std::vector<int> Ts_EventIDs;
 extern bool Ts_EventAll;
+extern bool Ts_expertMode;
 
 static bool IsEventBoot()
 {
@@ -219,6 +221,14 @@ static void PrepareStageSequenceBoot(const X86Context& ctx, uint8_t* base)
 {
 	// reset the stage sequence state
 	GuestToHostFunction<void, CallConvention::Thiscall>(ctx, sub_258610, g_StageSequenceManager);
+
+	if (Ts_StageID != -1 && Ts_expertMode)
+	{
+		ToggleExpertMode();
+		Ts_expertMode = false;
+		auto saveData = X86_LOAD_U32(0x549640);
+		X86_STORE_U32(saveData + 0xA0, 0x5); // Set lives to 0x5 otherwise expert mode will default to 0 (todo: add check if we add force load save here).
+	}
 
 	// we need to assign the pad num to the controller data
 	// otherwise Vibration::Manager will crash the game with a vector out of range

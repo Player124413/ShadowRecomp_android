@@ -232,7 +232,7 @@ void WalkTurnSpeedMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 // No Skidding
 bool NoSkiddingMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	return Config::ReloadedMod;
+	return Config::ReloadedMod && !Config::ReloadedModOriginalSkid;
 }
 
 // Keep Melee Weapons when Mounting Vehicles
@@ -242,9 +242,14 @@ bool KeepMeleeOnVehicleMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 }
 
 // CarType Vehicles Revamp
+static bool IsCarRevamp()
+{
+	return Config::ReloadedMod && !Config::ReloadedModOriginalCarPhysics;
+}
+
 bool CarGasReleaseMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	if (!Config::ReloadedMod)
+	if (!IsCarRevamp())
 	{
 		return false;
 	}
@@ -256,17 +261,17 @@ bool CarGasReleaseMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 bool CarBrakeButtonMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
 	const uint8_t held = X86_LOAD_U8(ctx.eax.u32 + ctx.edx.u32 * 8);
-	return (held & (Config::ReloadedMod ? PJSPeripheral::BTN_Y : PJSPeripheral::BTN_B)) != 0;
+	return (held & (IsCarRevamp() ? PJSPeripheral::BTN_Y : PJSPeripheral::BTN_B)) != 0;
 }
 
 bool CarRevampMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	return Config::ReloadedMod;
+	return IsCarRevamp();
 }
 
 bool CarDriftHoldableMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	if (!Config::ReloadedMod)
+	if (!IsCarRevamp())
 	{
 		return false;
 	}
@@ -300,21 +305,31 @@ bool CarDriftHoldableMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 // Fix steering during drift
 bool CarDriftRecoverySteerMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	return Config::ReloadedMod;
+	return IsCarRevamp();
+}
+
+static bool IsSuperAirSaucer()
+{
+	return Config::ReloadedMod && !Config::ReloadedModOriginalAirSaucerPhysics;
 }
 
 // Super AirSaucer JumpStrength 100 -> 200
 void AirSaucerJumpMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
 	ctx.esp.u32 -= 4;
-	X86_STORE_F32(ctx.esp.u32, Config::ReloadedMod ? 200.0f : 100.0f);
+	X86_STORE_F32(ctx.esp.u32, IsSuperAirSaucer() ? 200.0f : 100.0f);
 }
 
-// AirSaucer Replace Second Jump with Stomp
+// AirSaucer Replace Second Jump with Stomp (update second jump)
 void AirSaucerStompMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
+	float strength = 100.0f;
+	if (IsSuperAirSaucer())
+	{
+		strength = Config::ReloadedModOriginalAirSaucerDoubleJump ? 200.0f : -400.0f;
+	}
 	ctx.esp.u32 -= 4;
-	X86_STORE_F32(ctx.esp.u32, Config::ReloadedMod ? -400.0f : 100.0f);
+	X86_STORE_F32(ctx.esp.u32, strength);
 }
 
 // Heal Unit Explosion Hitbox Size 20 -> 45
@@ -342,7 +357,7 @@ void EnemyWarpAppearTimeMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 void ElecCodeSpeedMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
 	ctx.esp.u32 -= 4;
-	X86_STORE_F32(ctx.esp.u32, Config::ReloadedMod && !Config::ReloadedOriginalElecCodeEnemySpeed ? 350.0f : 50.0f);
+	X86_STORE_F32(ctx.esp.u32, Config::ReloadedMod && !Config::ReloadedModOriginalElecCodeEnemySpeed ? 350.0f : 50.0f);
 }
 
 // Katana LV1 Ammo 4 -> 18
@@ -406,7 +421,7 @@ void SolidCollisionTriggerMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 // Cannon & Lock On Weapons No Knockback
 bool WeaponNoKnockbackMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	return Config::ReloadedMod;
+	return Config::ReloadedMod && !Config::ReloadedModOriginalWeaponKnockback;
 }
 
 // EscapePlane / EggBalloon Stat Adjustment
@@ -415,22 +430,27 @@ bool ChaseObjNoInvulnerabilityMidAsmHook(X86Context& __restrict ctx, uint8_t* ba
 	return Config::ReloadedMod;
 }
 
+static bool IsEscapePlaneHealth()
+{
+	return Config::ReloadedMod && !Config::ReloadedModOriginalEscapePodHealth;
+}
+
 // EscapePlane phase 2 600 -> 1600
 void EscapePlanePhase2MidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	ctx.xmm[0].f32[0] = Config::ReloadedMod ? 1600.0f : X86_LOAD_F32(0x456B0C);
+	ctx.xmm[0].f32[0] = IsEscapePlaneHealth() ? 1600.0f : X86_LOAD_F32(0x456B0C);
 }
 
 // EscapePlane phase 3 400 -> 1000
 void EscapePlanePhase3MidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	ctx.xmm[0].f32[0] = Config::ReloadedMod ? 1000.0f : X86_LOAD_F32(0x44BB18);
+	ctx.xmm[0].f32[0] = IsEscapePlaneHealth() ? 1000.0f : X86_LOAD_F32(0x44BB18);
 }
 
 // EscapePlane phase 4 200 -> 300
 void EscapePlanePhase4MidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	ctx.xmm[0].f32[0] = Config::ReloadedMod ? 300.0f : X86_LOAD_F32(0x449B38);
+	ctx.xmm[0].f32[0] = IsEscapePlaneHealth() ? 300.0f : X86_LOAD_F32(0x449B38);
 }
 
 // EggBalloon phase 2 300 -> 800
@@ -577,7 +597,7 @@ void LastWayInclusiveScoringMidAsmHook(X86Context& __restrict ctx, uint8_t* base
 
 static bool CountsAsARank(uint32_t rank)
 {
-	return static_cast<int32_t>(rank) <= (Config::ReloadedMod ? 1 : 0);
+	return static_cast<int32_t>(rank) <= (Config::ReloadedMod && !Config::ReloadedModDisableSRank ? 1 : 0);
 }
 
 // S Rank System
@@ -747,7 +767,7 @@ void ExpertEndingMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 // Ghost Red Rings (gdt -> gd2)
 void GhostRedRingsGDTRedirectMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	if (!Config::ReloadedMod)
+	if (!Config::ReloadedMod || Config::ReloadedModDisableGhostRedRings)
 	{
 		return;
 	}
@@ -771,7 +791,7 @@ void GhostRedRingsGDTRedirectMidAsmHook(X86Context& __restrict ctx, uint8_t* bas
 
 bool GhostRedRingsSaveSkipMidAsmHook(X86Context& __restrict ctx, uint8_t* base)
 {
-	if (!Config::ReloadedMod)
+	if (!Config::ReloadedMod || Config::ReloadedModDisableGhostRedRings)
 	{
 		return false;
 	}
@@ -1008,16 +1028,22 @@ void ReloadedValuePatches()
 	// == Idle Chatter Tweak ==
 
 	// == Super AirSaucer ==
-	// RotSpeed 250 -> 8000
-	X86_STORE_F32(0x471B10, 8000.0f);
-	// GroundSpeed 270 -> 540
-	X86_STORE_F32(0x471AF4, 540.0f);
-	// AirSpeed 220 -> 440
-	X86_STORE_F32(0x471AE4, 440.0f);
+	if (!Config::ReloadedModOriginalAirSaucerPhysics)
+	{
+		// RotSpeed 250 -> 8000
+		X86_STORE_F32(0x471B10, 8000.0f);
+		// GroundSpeed 270 -> 540
+		X86_STORE_F32(0x471AF4, 540.0f);
+		// AirSpeed 220 -> 440
+		X86_STORE_F32(0x471AE4, 440.0f);
+	}
 	// == Super AirSaucer ==
 
 	// EscapePlane Stat Adjustment 800 -> 2200
-	X86_STORE_F32(0x46CED4, 2200.0f);
+	if (!Config::ReloadedModOriginalEscapePodHealth)
+	{
+		X86_STORE_F32(0x46CED4, 2200.0f);
+	}
 
 	// EggBalloon Stat Adjustment 400 -> 1100
 	X86_STORE_F32(0x46A2C0, 1100.0f);

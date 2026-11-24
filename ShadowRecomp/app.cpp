@@ -24,28 +24,31 @@
 // UpdateSDLEventsMidAsmHook() corrects it.
 static std::thread::id g_mainThreadId = std::this_thread::get_id();
 
-void App::Restart(std::vector<std::string> restartArgs)
-{
-	os::process::StartProcess(os::process::GetExecutablePath(), restartArgs, os::process::GetWorkingDirectory());
-	Exit();
-}
-
-void App::Exit()
+static void CloseAndSaveResources()
 {
 	RichPresence::ShadowRpc::Stop();
 	Video::Shutdown();
 	AudioShutDown();
 	Config::Save();
-
 	TimerResolution::Release();
-
 	if (m_TLS)
 	{
 		delete(m_TLS);
 		m_TLS = nullptr;
 	}
-	std::_Exit(0);
+}
 
+void App::Restart(std::vector<std::string> restartArgs)
+{
+	CloseAndSaveResources();
+	os::process::StartProcess(os::process::GetExecutablePath(), restartArgs, os::process::GetWorkingDirectory());
+	std::_Exit(0);
+}
+
+void App::Exit()
+{
+	CloseAndSaveResources();
+	std::_Exit(0);
 }
 
 bool App::isInMainMenu() // 7 is library

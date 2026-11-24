@@ -120,6 +120,7 @@ public:
 	SDL_Gamepad* controller{};
 	SDL_Joystick* joystick{};
 	SDL_JoystickID id{};
+	bool joinHeld{};
 
 	Controller() = default;
 
@@ -199,6 +200,11 @@ public:
 		default:
 			return SDL_GetGamepadButton(controller, (SDL_GamepadButton)button) ? 0xFF : 0;
 		}
+	}
+
+	bool IsJoinPressed() const
+	{
+		return SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_SOUTH) || SDL_GetGamepadButton(controller, SDL_GAMEPAD_BUTTON_START);
 	}
 
 	void SetVibration(const XboxVibrationPacket& vibration)
@@ -333,7 +339,8 @@ static void MergeTouchControls(XINPUT_GAMEPAD_OG& pad)
 #endif
 
 std::array<Controller, 4> g_controllers;
-Controller* g_activeController;
+static std::vector<Controller> s_unassignedControllers;
+static std::atomic<SDL_JoystickID> s_activeControllerId;
 uint32_t g_keyboardPort = 1;
 std::atomic<bool> g_chaosControlHoldCheat = false;
 std::atomic<bool> g_chaosBlastHoldCheat = false;
@@ -442,14 +449,6 @@ public:
 
 KeyboardController g_keyboardController;
 
-inline Controller* EnsureController(uint32_t dwUserIndex)
-{
-	if (!g_controllers[dwUserIndex].controller)
-		return nullptr;
-
-	return &g_controllers[dwUserIndex];
-}
-
 inline size_t FindFreeController()
 {
 	for (size_t i = 0; i < g_controllers.size(); i++)
@@ -469,12 +468,18 @@ inline Controller* FindController(SDL_JoystickID which)
 			return &controller;
 	}
 
+	for (auto& controller : s_unassignedControllers)
+	{
+		if (controller.id == which)
+			return &controller;
+	}
+
 	return nullptr;
 }
 
 static void SetControllerInputDevice(Controller* controller)
 {
-	g_activeController = controller;
+	s_activeControllerId = controller->id;
 
 	input::g_inputDevice = controller->GetInputDevice();
 	input::g_inputDeviceController = input::g_inputDevice;
@@ -546,20 +551,27 @@ static void SetControllerPlayerColor(Controller& controller, size_t playerIndex)
 
 static bool s_auraDirty = true;
 
+static bool CloseIfDisconnected(Controller& controller)
+{
+	if (!controller.controller || SDL_GamepadConnected(controller.controller))
+	{
+		return false;
+	}
+	if (s_activeControllerId == controller.id)
+	{
+		s_activeControllerId = 0;
+	}
+	controller.Close();
+	return true;
+}
+
 static void SyncControllers()
 {
 	for (auto& controller : g_controllers)
 	{
-		if (!controller.controller || SDL_GamepadConnected(controller.controller))
-		{
-			continue;
-		}
-		if (g_activeController == &controller)
-		{
-			g_activeController = nullptr;
-		}
-		controller.Close();
+		CloseIfDisconnected(controller);
 	}
+	std::erase_if(s_unassignedControllers, CloseIfDisconnected);
 
 	auto gamepadCount = 0;
 	auto gamepads = SDL_GetGamepads(&gamepadCount);
@@ -571,24 +583,50 @@ static void SyncControllers()
 			continue;
 		}
 
-		const auto freeIndex = FindFreeController();
-
-		if (freeIndex == -1)
-		{
-			break;
-		}
-
 		auto controller = Controller(gamepads[i]);
 		if (controller.controller)
 		{
-			g_controllers[freeIndex] = controller;
+			s_unassignedControllers.push_back(controller);
 		}
 	}
 
 	SDL_free(gamepads);
+}
 
-	// a new pad was added which has no aura yet
-	s_auraDirty = true;
+static void AssignControllers()
+{
+	std::erase_if(s_unassignedControllers, [](Controller& controller)
+	{
+		bool wasHeld = std::exchange(controller.joinHeld, controller.IsJoinPressed());
+		if (!controller.joinHeld || wasHeld || !IsInputAllowed())
+			return false;
+
+		auto port = FindFreeController();
+		if (port == -1)
+			return false;
+
+		g_controllers[port] = controller;
+		SetControllerInputDevice(&g_controllers[port]);
+		s_auraDirty = true;
+		return true;
+	});
+}
+
+static void ResetControllerPorts()
+{
+	for (auto& controller : g_controllers)
+	{
+		if (!controller.CanPoll())
+		{
+			continue;
+		}
+
+		controller.SetVibration({});
+		SetControllerChaosModeLED(controller, LED_AURA_NEUTRAL);
+		controller.joinHeld = true;
+		s_unassignedControllers.push_back(controller);
+		controller = {};
+	}
 }
 
 // ds4 / ds5 led color aura fixes
@@ -627,7 +665,7 @@ static void ApplyControllerLEDs()
 static void PublishPadFrame()
 {
 	PadFrame frame{};
-	frame.hasActiveController = g_activeController != nullptr;
+	frame.hasActiveController = s_activeControllerId != 0;
 
 	for (size_t i = 0; i < g_controllers.size(); i++)
 	{
@@ -642,9 +680,13 @@ static void PublishPadFrame()
 		snapshot.connected = true;
 		snapshot.device = controller.GetInputDevice();
 
-		for (size_t button = 0; button < snapshot.buttons.size(); button++)
+		controller.joinHeld = controller.joinHeld && controller.IsJoinPressed();
+		if (!controller.joinHeld)
 		{
-			snapshot.buttons[button] = controller.GetButtonValue((EPadButton)button);
+			for (size_t button = 0; button < snapshot.buttons.size(); button++)
+			{
+				snapshot.buttons[button] = controller.GetButtonValue((EPadButton)button);
+			}
 		}
 
 		snapshot.leftX = SDL_GetGamepadAxis(controller.controller, SDL_GAMEPAD_AXIS_LEFTX);
@@ -668,6 +710,7 @@ void input::SetChaosAura(ELedAura mode)
 void input::Update()
 {
 	MainThreadDispatcher::Get().Flush();
+	AssignControllers();
 	ApplyControllerLEDs();
 	PublishPadFrame();
 }
@@ -688,29 +731,26 @@ bool Input_OnSDLEvent(void*, SDL_Event* event)
 	case SDL_EVENT_GAMEPAD_BUTTON_UP:
 	case SDL_EVENT_GAMEPAD_AXIS_MOTION:
 	{
-		auto* controller = FindController(event->gdevice.which);
-
-		if (!controller)
+		if (s_activeControllerId == event->gdevice.which)
 			break;
 
-		if (g_activeController != controller)
+		if (event->type == SDL_EVENT_GAMEPAD_AXIS_MOTION && abs(event->gaxis.value) <= 8000)
+			break;
+
+		MainThreadDispatcher::Get().Post([id = event->gdevice.which]()
 		{
-			if (event->type == SDL_EVENT_GAMEPAD_AXIS_MOTION && abs(event->gaxis.value) <= 8000)
-				break;
+			auto* controller = FindController(id);
 
-			MainThreadDispatcher::Get().Post([id = controller->id]()
+			if (!controller)
+				return;
+
+			if (!GameWindow::s_isFullscreenCursorVisible)
 			{
-				if (!GameWindow::s_isFullscreenCursorVisible)
-				{
-					SDL_HideCursor();
-				}
+				SDL_HideCursor();
+			}
 
-				if (auto* controller = FindController(id))
-				{
-					SetControllerInputDevice(controller);
-				}
-			});
-		}
+			SetControllerInputDevice(controller);
+		});
 
 		break;
 	}
@@ -721,6 +761,10 @@ bool Input_OnSDLEvent(void*, SDL_Event* event)
 		{
 			g_keyboardPort = event->key.scancode - SDL_SCANCODE_1 + 1;
 			LOGFN("Keyboard now controlling PORT {}", g_keyboardPort);
+		}
+		if (event->key.scancode == SDL_SCANCODE_F5 && !event->key.repeat)
+		{
+			MainThreadDispatcher::Get().Post(ResetControllerPorts);
 		}
 		if (event->key.scancode == SDL_SCANCODE_F7 && !event->key.repeat && Config::FillChaosControlGaugeOnInput)
 		{

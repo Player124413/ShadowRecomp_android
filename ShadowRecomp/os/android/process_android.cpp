@@ -43,8 +43,8 @@ bool os::process::SetWorkingDirectory(const std::filesystem::path& path)
 
 bool os::process::StartProcess(const std::filesystem::path& path, const std::vector<std::string>& args, std::filesystem::path work)
 {
-    // An Android app cannot re-execute itself. App::Restart() falls through to App::Exit(),
-    // which returns the user to the launcher.
+    // An Android app cannot re-execute itself. App::Restart() ends the process whether or
+    // not this worked, which returns the user to the launcher.
     (void)path;
     (void)args;
     (void)work;

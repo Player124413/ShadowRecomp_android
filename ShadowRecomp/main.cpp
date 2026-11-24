@@ -26,6 +26,7 @@
 #include <patches/multiplayer_mod_patches.h>
 #include <audio/embedded_player.h>
 #include <ui/installer_wizard.h>
+#include <ui/boot_precompile.h>
 #include <install/installer.h>
 #include <install/update_checker.h>
 #include <gpu/frame_pacing/timer_resolution.h>
@@ -147,6 +148,7 @@ extern bool isHostThread;
 
 bool QuickBootConfig = false;
 int Ts_StageID = -1; // test spawn stage select
+bool Ts_expertMode = false;
 std::vector<int> Ts_EventIDs; // events/cutscenes to play directly on boot
 bool Ts_EventAll = false; // will play all events
 
@@ -175,9 +177,51 @@ static void ParseEventList(const char* arg)
     }
 }
 
+#ifdef _WIN32
+#include <DbgHelp.h>
+#include <csignal>
+#pragma comment(lib, "dbghelp.lib")
+
+static LONG WINAPI WriteCrashDump(EXCEPTION_POINTERS* exceptionPointers)
+{
+    WCHAR path[MAX_PATH + 32];
+    DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
+    if (length == 0 || length >= MAX_PATH)
+    {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    swprintf_s(path + length, std::size(path) - length, L".%lu.dmp", GetCurrentProcessId());
+    HANDLE file = CreateFileW(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file != INVALID_HANDLE_VALUE)
+    {
+        MINIDUMP_EXCEPTION_INFORMATION exceptionInfo{ GetCurrentThreadId(), exceptionPointers, FALSE };
+        constexpr auto dumpType = static_cast<MINIDUMP_TYPE>(
+            MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithDataSegs | MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules
+        );
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, dumpType, &exceptionInfo, nullptr, nullptr);
+        CloseHandle(file);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+// To force abort and virtual to also make a dmp
+static void AbortCrashDump(int)
+{
+    __try
+    {
+        RaiseException(0x40000015, EXCEPTION_NONCONTINUABLE, 0, nullptr);
+    }
+    __except (WriteCrashDump(GetExceptionInformation()), EXCEPTION_EXECUTE_HANDLER){}
+}
+#endif
+
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
+    SetUnhandledExceptionFilter(WriteCrashDump);
+    signal(SIGABRT, AbortCrashDump);
+
     //SetProcessAffinityMask(GetCurrentProcess(), 1);
     TimerResolution::SetHighestResolution();
 
@@ -238,7 +282,7 @@ int main(int argc, char* argv[])
     LOGN("Starting Shadow Recomp");
 
     std::filesystem::path xbePath;
-    xbePath = GameExecutable;
+    xbePath = GetGameExecutable();
 
     bool forceInstaller = false;
     bool useDefaultWorkingDirectory = false;
@@ -261,6 +305,11 @@ int main(int argc, char* argv[])
                 Ts_StageID = atoi(argv[++i]);
             else
                 LOGN_WARNING("No argument was specified for --level. Option will be ignored.");
+        }
+
+        if (Ts_StageID != -1 && strcmp(argv[i], "--expert") == 0)
+        {
+            Ts_expertMode = true;
         }
 
         if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--event") == 0)
@@ -332,11 +381,11 @@ int main(int argc, char* argv[])
 
     // The launcher stages the game source (disc image or extracted disc); install it
     // before anything looks for the game. See os/android/install_android.h.
-    const os::android::StagedInstallResult stagedInstall = os::android::InstallStagedGame(GetGamePath(), MainGameFolder);
+    const os::android::StagedInstallResult stagedInstall = os::android::InstallStagedGame(GetGamePath(), GetMainGameFolder());
     STARTUP_PHASE(stagedInstall == os::android::StagedInstallResult::NothingStaged ? "checked for a game to install" : "game install attempted");
 #endif
 
-    bool isGameInstalled = std::filesystem::exists(GameExecutable);
+    bool isGameInstalled = std::filesystem::exists(GetGameExecutable());
     bool runInstallerWizard = forceInstaller || !isGameInstalled;
 
     if (forceInstallationCheck)
@@ -344,7 +393,7 @@ int main(int argc, char* argv[])
         os::process::ShowConsole();
         int lastDecile = -1;
         std::string errorMessage;
-        bool isInstallValid = Installer::CheckInstall(MainGameFolder, [&](const Installer::Progress& progress)
+        bool isInstallValid = Installer::CheckInstall(GetMainGameFolder(), [&](const Installer::Progress& progress)
         {
             int decile = int(progress.ratio * 10.0f);
             if (decile != lastDecile)
@@ -422,14 +471,14 @@ int main(int argc, char* argv[])
     InitMultiCoreMutexesPatches();
 
 
-    isGameInstalled = std::filesystem::exists(GameExecutable);
+    isGameInstalled = std::filesystem::exists(GetGameExecutable());
     if (!isGameInstalled)
     {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GameWindow::GetTitle(), "Game files not found. Please reinstall.", GameWindow::s_pWindow);
         std::_Exit(1);
     }
 
-    xbePath = GameExecutable;
+    xbePath = GetGameExecutable();
     uint32_t entry = LoadXbeModule(xbePath);
     STARTUP_PHASE("game executable loaded");
 
@@ -458,13 +507,14 @@ int main(int argc, char* argv[])
 
 
 
-    Video::PrecompileShadersAndPipelines();
+    BootPrecompile::Run();
 
     PatchUnixStrings();
     ReloadedValuePatches();
     CodeValuePatches();
     MultiplayerPatchesInit();
     PausePatchesInit();
+    ModLoader::ApplyHelperPatches();
     BloomConfigValueChangedCallback(&Config::BloomIntensity);
     RichPresence::ShadowRpc::Start();
     STARTUP_PHASE("patches applied; starting the game");

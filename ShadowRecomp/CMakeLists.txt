@@ -133,6 +133,14 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
         "os/linux/process_linux.cpp"
         "os/linux/user_linux.cpp"
     )
+elseif (APPLE)
+    set(SHADOW_RECOMP_OS_CXX_SOURCES
+        "os/macos/logger_macos.cpp"
+        "os/macos/media_macos.cpp"
+        "os/macos/process_macos.cpp"
+        "os/macos/user_macos.cpp"
+        "os/macos/version_macos.cpp"
+    )
 endif()
 
 
@@ -161,6 +169,7 @@ set(SHADOW_RECOMP_GPU_CXX_SOURCES
     "gpu/imgui/imgui_common.cpp"
     "gpu/imgui/imgui_font_builder.cpp"
     "gpu/imgui/imgui_snapshot.cpp"
+    "gpu/requirements.cpp"
 )
 
 if (ANDROID)
@@ -240,6 +249,7 @@ set(SHADOW_RECOMP_UI_CXX_SOURCES
     "ui/menu_common.cpp"
     "ui/multiplayer_hud.cpp"
     "ui/installer_wizard.cpp"
+    "ui/boot_precompile.cpp"
 )
 
 set(SHADOW_RECOMP_MOD_CXX_SOURCES
@@ -408,6 +418,28 @@ elseif (ANDROID)
     # it could be overridden from outside, which nothing does and the recompiled code,
     # made of tens of thousands of functions calling each other, would pay for.
     target_link_options(ShadowRecomp PRIVATE "LINKER:-Bsymbolic-functions")
+elseif (APPLE)
+    # Create version number for app bundle.
+    CreateVersionString(
+            VERSION_TXT ${VERSION_TXT}
+            OUTPUT_VAR MACOS_BUNDLE_VERSION
+    )
+
+    add_executable(ShadowRecomp MACOSX_BUNDLE
+            ${SHADOW_RECOMP_CXX_SOURCES}
+            res/macos/game_icon.icns
+    )
+    set_source_files_properties(res/macos/game_icon.icns PROPERTIES
+            MACOSX_PACKAGE_LOCATION Resources)
+    set_target_properties(ShadowRecomp PROPERTIES
+            OUTPUT_NAME "Shadow Recompiled"
+            MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/res/macos/MacOSXBundleInfo.plist.in
+            MACOSX_BUNDLE_GUI_IDENTIFIER io.github.foxworkshop.shadowrecomp
+            MACOSX_BUNDLE_BUNDLE_NAME "Shadow Recompiled"
+            MACOSX_BUNDLE_BUNDLE_VERSION ${MACOS_BUNDLE_VERSION}
+            MACOSX_BUNDLE_SHORT_VERSION_STRING ${MACOS_BUNDLE_VERSION}
+            MACOSX_BUNDLE_ICON_FILE "game_icon.icns"
+    )
 else()
     add_executable(ShadowRecomp ${SHADOW_RECOMP_CXX_SOURCES})
 endif()

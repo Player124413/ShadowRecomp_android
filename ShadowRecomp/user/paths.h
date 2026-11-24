@@ -14,6 +14,9 @@
 
 extern std::filesystem::path g_executableRoot;
 
+bool CheckPortable();
+std::filesystem::path BuildUserPath();
+const std::filesystem::path& GetUserPath();
 inline std::filesystem::path GetGamePath()
 {
 #ifdef __ANDROID__
@@ -23,12 +26,15 @@ inline std::filesystem::path GetGamePath()
         return os::android::GetDataRoot();
 #endif
 
+#ifdef __APPLE__
+    // On macOS, there is the expectation that the app may be installed to
+    // /Applications/, and the bundle should not be modified. Thus we need
+    // to install game files to the user directory instead of next to the app.
+    return GetUserPath();
+#else
     return GAME_INSTALL_DIRECTORY;
+#endif
 }
-
-bool CheckPortable();
-std::filesystem::path BuildUserPath();
-const std::filesystem::path& GetUserPath();
 
 inline std::filesystem::path GetSavePath(bool checkForMods)
 {

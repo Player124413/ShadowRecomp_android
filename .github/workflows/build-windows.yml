@@ -6,21 +6,23 @@ on:
         required: true
       ASSET_REPO_TOKEN:
         required: true
-      XBOXRECOMP2_TOKEN:
-        required: true
 
 jobs:
   build-windows:
-    name: Build Windows (${{ matrix.preset }})
-    runs-on: windows-2025-vs2026
+    name: Build Windows (${{ matrix.arch.name }}, ${{ matrix.preset }})
+    runs-on: ${{ matrix.arch.runner }}
     strategy:
       matrix:
         preset: [
-          "x64-Clang-Release",
-          #"x64-Clang-RelWithDebInfo-Aggressive"
-          ]
+          "Clang-Release",
+          #"Clang-RelWithDebInfo-Aggressive"
+        ]
+        arch: [
+          {"name": "x64", "runner": "windows-2025-vs2026"},
+          {"name": "arm64", "runner": "windows-11-vs2026-arm"},
+        ]
     env:
-      CMAKE_PRESET: ${{ matrix.preset }}
+      CMAKE_PRESET: ${{ matrix.arch.name }}-${{ matrix.preset }}
 
     steps:
       - name: Checkout Repository
@@ -52,10 +54,11 @@ jobs:
           token: ${{ secrets.ASSET_REPO_TOKEN }}
           path: .\private
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ runner.os }}-${{ matrix.preset }}
+      # Disabled: Breaks with pre-compiled headers
+      #- name: Setup ccache
+      #  uses: hendrikmuhs/ccache-action@v1.2
+      #  with:
+      #    key: ${{ runner.os }}-${{ matrix.arch.name }}-${{ matrix.preset }}
 
       - name: Cache vcpkg
         uses: actions/cache@v6
@@ -63,9 +66,9 @@ jobs:
           path: |
             ./thirdparty/vcpkg/downloads
             ~/AppData/Local/vcpkg/archives
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.arch.name }}-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-
+            vcpkg-${{ runner.os }}-${{ matrix.arch.name }}-
 
       - name: Install Dependencies
         run: |
@@ -75,16 +78,20 @@ jobs:
       - name: Configure Developer Command Prompt
         uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
-          arch: x64
+          arch: ${{ matrix.arch.name }}
+
+      - name: Force VS Clang/LLVM (temp until MS fixes CI bs)
+        run: |
+          $llvm = "$env:VCINSTALLDIR\Tools\Llvm\${{ matrix.arch.name }}\bin"
+          "Path=$llvm;$env:Path" >> $env:GITHUB_ENV
+          & "$llvm\clang-cl.exe" --version
 
       - name: Prepare Project
         run: copy .\private\* .\ShadowRecompLib\private
 
-      # HACK: GH_TOKEN for private XboxRecomp2. REMOVE when public.
       - name: Configure Project
-        env:
-          GH_TOKEN: ${{ secrets.XBOXRECOMP2_TOKEN }}
-        run: cmake . --preset ${{ env.CMAKE_PRESET }} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DSHADOW_RECOMP_XBOXRECOMP2=binary
+        run: cmake . --preset ${{ env.CMAKE_PRESET }} -DSHADOW_RECOMP_XBOXRECOMP2=binary
+        # -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
 
       - name: Build Project
         run: cmake --build .\out\build\${{ env.CMAKE_PRESET }} --target ShadowRecomp

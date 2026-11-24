@@ -615,6 +615,9 @@ void IniFile::load(std::istream& f)
 		if (line.empty())
 			continue;
 
+		if (line.back() == '\r')
+			line.pop_back();
+
 		bool startswithbracket = false;
 		int firstequals = -1;
 		int endbracket = -1;

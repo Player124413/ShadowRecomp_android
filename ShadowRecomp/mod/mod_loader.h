@@ -14,5 +14,3 @@ struct ModLoader
 
     static void Init();
 };
-
-std::string GetCurrentNameFileFromOneFile();

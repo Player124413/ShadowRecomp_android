@@ -756,7 +756,7 @@ X86_OVERRIDE_FUNC(sub_38F810)
 	X86_STORE_U32(this_ + 268, (*g_jumpBallColors[curCharID])[2] << 22);
 }
 
-void ModLoader::ApplyHelperPatches()
+void SetSpinTrailColors()
 {
 	auto base = g_memory.base;
 
@@ -773,6 +773,12 @@ void ModLoader::ApplyHelperPatches()
 }
 
 // --- Aura Color Helper for Mods END ---
+
+
+void ModLoader::ApplyHelperPatches()
+{
+	SetSpinTrailColors();
+}
 
 static std::vector<std::string> ReadOneFileAssetNames(const fs::path& path)
 {
@@ -832,7 +838,7 @@ static void LogIndividualFilesReplacement()
 {
 	std::vector<std::pair<std::string, std::vector<std::string>>> archives;
 	std::error_code ec;
-	fs::path gameRoot = MainGameFolder;
+	fs::path gameRoot = GetMainGameFolder();
 
 	for (auto it = fs::recursive_directory_iterator(gameRoot, ec); !ec && it != fs::recursive_directory_iterator(); it.increment(ec))
 	{
@@ -1205,6 +1211,42 @@ X86_OVERRIDE_FUNC(sub_32A9A0)
 	ctx.AddEsp(1);
 }
 
+// Note this would normally be done by separated code mod (likely through DLL)
+// but we don't have that yet, so until then this is a temp solution since Reloaded is embbedded in the mod loader.
+void ReloadedModConfig(std::string reloadedDir)
+{
+	if (!Config::ReloadedMod.Value)
+		return;
+
+	IniFile* config = new IniFile(GetGamePath() / reloadedDir / "config.ini");
+	Config::ReloadedModOriginalExpertRingDropBehavior = config->getBool("General", "ReloadedModOriginalExpertRingDropBehavior", false);
+	Config::ReloadedModOriginalElecCodeEnemySpeed = config->getBool("General", "ReloadedModOriginalElecCodeEnemySpeed", false);
+	Config::ReloadedModOriginalEscapePodHealth = config->getBool("General", "ReloadedModOriginalEscapePodHealth", false);
+	Config::ReloadedModOriginalSkid = config->getBool("General", "ReloadedModOriginalSkid", false);
+	Config::ReloadedModOriginalCarPhysics = config->getBool("General", "ReloadedModOriginalCarPhysics", false);
+	Config::ReloadedModOriginalAirSaucerPhysics = config->getBool("General", "ReloadedModOriginalAirSaucerPhysics", false);
+	Config::ReloadedModOriginalAirSaucerDoubleJump = config->getBool("General", "ReloadedModOriginalAirSaucerDoubleJump", false);
+	Config::ReloadedModOriginalWeaponKnockback = config->getBool("General", "ReloadedModOriginalWeaponKnockback", false);
+	Config::ReloadedModDisableGhostRedRings = config->getBool("General", "ReloadedModDisableGhostRedRings", false);
+	Config::ReloadedModDisableSRank = config->getBool("General", "ReloadedModDisableSRank", false);
+	delete config;
+}
+
+// same as above
+void MultiplayerModConfig(std::string mpDIR)
+{
+	if (!Config::ExtendedMultiplayer.Value)
+		return;
+
+	IniFile* config = new IniFile(GetGamePath() / mpDIR / "config.ini");
+	Config::ExtendedMultiplayerPlayerCount = config->getInt("General", "ExtendedMultiplayerPlayerCount", 2);
+	Config::ShadowAndroidsNoEmbeddedWeapons = config->getBool("General", "ShadowAndroidsNoEmbeddedWeapons", false);
+	Config::ExtendedMultiplayerP1CharId = config->getInt("Chara", "ExtendedMultiplayerP1CharId", 14);
+	Config::ExtendedMultiplayerP2CharId = config->getInt("Chara", "ExtendedMultiplayerP2CharId", 15);
+	Config::ExtendedMultiplayerP3CharId = config->getInt("Chara", "ExtendedMultiplayerP3CharId", 16);
+	Config::ExtendedMultiplayerP4CharId = config->getInt("Chara", "ExtendedMultiplayerP4CharId", 17);
+	delete config;
+}
 
 void ModLoader::Init()
 {
@@ -1343,11 +1385,13 @@ void ModLoader::Init()
 		if (strcmp(reservedIDName[(uint8_t)ModReservedID::Reloaded], modinf.ID.c_str()) == 0)
 		{
 			Config::ReloadedMod.Value = true;
+			ReloadedModConfig(modDir.string());
 		}
 
 		if (strcmp(reservedIDName[(uint8_t)ModReservedID::Multiplayer], modinf.ID.c_str()) == 0)
 		{
 			Config::ExtendedMultiplayer.Value = true;
+			MultiplayerModConfig(modDir.string());
 		}
 
 		LoadReplaceIni(modDir, modDir / "replace.ini", &modinf, false);
